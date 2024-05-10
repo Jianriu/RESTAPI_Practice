@@ -1,5 +1,6 @@
 
-from flask_restful import Resource, reqparse, fields, marshal_with
+from sqlalchemy.exc import IntegrityError
+from flask_restful import Resource, reqparse, fields, marshal_with, abort
 from models import *
 
 video_put_args = reqparse.RequestParser() #automatically parse through the request and fits our guidlines
@@ -18,12 +19,29 @@ class Video(Resource): #A class that inherits a resource. Allows us to override 
     @marshal_with(resource_fields) #serializes the VideoModel instance into something we can return
     def get(self, video_id):
         result = VideoModel.query.get(video_id)
+        if result is None:
+            abort(404, message="Video ID " + str(video_id) + " does not exist.")
         return result #Using dictionary to make it JSON serializable as JSON has a key value pair format
     
     @marshal_with(resource_fields)
     def post(self, video_id):
         args = video_put_args.parse_args()
         video = VideoModel(id=video_id,name=args['name'],views=args['views'], likes=args['likes'])
-        db.session.add(video)
-        db.session.commit()
-        return video,201
+        try:
+            db.session.add(video)
+            db.session.commit()
+        except IntegrityError as ie:
+            db.session.rollback()
+            abort(400,message="Video already exists")
+        else:
+            return video,201
+
+    @marshal_with(resource_fields) 
+    def delete(self, video_id):
+        result = VideoModel.query.get(video_id)
+        if result is None:
+            abort(404, message="Video ID " + str(video_id) + " does not exist.")
+        else:
+            db.session.delete(result)
+            db.session.commit()
+            return result, 200
