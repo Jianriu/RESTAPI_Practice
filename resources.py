@@ -45,3 +45,19 @@ class Video(Resource): #A class that inherits a resource. Allows us to override 
             db.session.delete(result)
             db.session.commit()
             return result, 200
+    
+    def put(self, video_id):
+        result = VideoModel.query.get(video_id)
+        if result is None:
+            abort(404, message="Video ID " + str(video_id) + " does not exist.")
+        else:
+            args = video_put_args.parse_args()
+            if args['name']:
+                result.name = args["name"]
+            if args['views']:
+                result.views = args["views"]
+            if args['likes']:
+                result.likes = args["likes"]
+            
+            db.session.commit()
+            return "Update Successful"
